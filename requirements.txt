@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+elasticsearch==7.0.0
+transformers
+llama_index
+llama-index-llms-huggingface
+torch
+langchain-community
+nltk
+sse-starlette
+sentence-transformers==2.2.2

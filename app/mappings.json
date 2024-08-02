@@ -1,0 +1,39 @@
+{
+    "mappings": {
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "object"
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "base": {
+          "type": "object"
+        },
+        "species": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "evolution": {
+          "type": "object"
+        },
+        "profile": {
+            "type": "nested",
+            "properties": {
+            "ability": {
+                "type": "keyword"  
+            }
+            }
+        },
+        "image": {
+          "type": "object"
+        }
+      }
+    }
+  }
+  

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pokemon_app:
+    build: .
+    container_name: pokemon_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
+      OLLAMA_URL: ${OLLAMA_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest  
+    container_name: ollama
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  esdata:
+    driver: local
+  ollama:
+    driver: local

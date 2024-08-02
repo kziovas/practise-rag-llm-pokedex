@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokedex</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/assets/pokeball.png">
+    <style>
+        body {
+            background-color: #f8f8f8;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;  /* Prevent body from scrolling */
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;  /* Add vertical scroll if content exceeds height */
+        }
+        .custom-yellow-button {
+            background-color: #FFCE31;
+            color: #31309A; /* Ensures text is readable */
+            font-weight: bold;
+        }
+        h1 {
+            text-align: center;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            background-color: #d3d3d3;
+            padding: 10px;
+            cursor: pointer;
+            margin: 0;
+            border-radius: 4px;
+        }
+        .section-content {
+            padding: 10px;
+            border: 1px solid #d3d3d3;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        label {
+            margin: 10px 0 5px;
+        }
+        input, textarea {
+            margin-bottom: 15px;
+            padding: 8px;
+            width: 80%;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+        .green-button {
+            background-color: #4CAF50;
+        }
+        .red-button {
+            background-color: #f44336;
+        }
+        .blue-button {
+            background-color: #2196F3;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+        #documentDisplay {
+            max-width: 100%;
+            overflow-x: auto;  /* Add horizontal scroll if content exceeds width */
+        }
+        pre {
+            white-space: pre-wrap; /* Allow JSON to wrap to the next line if too long */
+            word-wrap: break-word;
+        }
+        .loading-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading-gif {
+            text-align: center;
+            max-width: 15%;
+            height: auto;
+        }
+        @keyframes rotateSlash {
+            0% {
+                transform: rotate(0deg);
+            }
+            50% {
+                transform: rotate(180deg); /* Rotate halfway */
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-animation {
+            display: inline-block;
+            animation: rotateSlash 0.5s infinite linear; /* Adjusted duration */
+            transform-origin: center; /* Ensures rotation is centered */
+            backface-visibility: hidden; /* Improves performance on some browsers */
+            perspective: 1000px; /* Adds depth to the animation */
+        }
+        .loading-container {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .loading-gif {
+            margin-right: 5px;
+        }
+        .loading-animation span {
+            margin-right: 5px;
+        }
+
+        #loadingSlash {
+            animation: rotateSlash 1s linear infinite;
+        }
+    </style>
+</head>
+<body style="color: #31309A;">
+    <div class="container">
+        <!-- Displaying the Pokedex image -->
+        <img src="/assets/pokedex.png" alt="Pokedex" style="max-width: 100%; display: block; margin: 0 auto;">
+
+        <h1>Smart Pokemon Assistant</h1>
+
+        <!-- Ask the Professor Section -->
+        <div class="section">
+            <h2 onclick="toggleSection(this)">Ask the Professor!</h2>
+            <div class="section-content" style="display: none;">
+                <label for="askQuery">Enter Any Question:</label>
+                <input type="text" id="askQuery" name="askQuery">
+                <button type="button" onclick="askTheProfessorStream()" class="custom-yellow-button">Ask</button>
+                <div class="loading-container">
+                    <img id="loadingGif" src="assets/loading.gif" class="loading-gif" alt="Thinking..." style="display: none;">
+                </div>
+                <ul id="askResults"></ul>
+                <div id="loadingAnimation" class="loading-animation" style="display: none;">
+                    <span id="loadingSlash">/</span>
+                </div>
+                
+            </div>
+        </div>
+        <!-- Perform Semantic Search Section -->
+        <div class="section">
+            <h2 onclick="toggleSection(this)">Search Pokedex</h2>
+            <div class="section-content" style="display: none;">
+                <label for="semanticQuery">Enter Search Query:</label>
+                <input type="text" id="semanticQuery" name="semanticQuery">
+                <button type="button" onclick="performSemanticSearch()" class="custom-yellow-button">Search</button>
+                <ul id="semanticResults"></ul>
+            </div>
+        </div>
+
+        
+        <div class="section">
+            <h2 onclick="toggleSection(this)">Show All Pokemon Names and IDs</h2>
+            <div class="section-content" style="display: none;">
+                <button onclick="getAllDocuments()" class="custom-yellow-button">Show All Pokemon Titles and IDs</button>
+                <ul id="documentList"></ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 onclick="toggleSection(this)">Manage Pokemon Documents</h2>
+            <div class="section-content" id="managePokemonContainer" >
+                <!-- Dropdown for selecting action -->
+                <label for="actionSelect">Select Action:</label>
+                <select id="actionSelect" onchange="handleActionSelect()">
+                    <option value="add">Add a New Pokemon</option>
+                    <option value="update">Update a Pokemon</option>
+                    <option value="delete">Delete a Pokemon</option>
+                    <option value="get">Show Pokemon by ID</option>
+                </select>
+
+                <!-- Add Pokemon -->
+                <div class="subsection add-subsection">
+                    <h3 >Add a New Pokemon </h3>
+                    <div class="subsection-content">
+                        <form id="addForm" onsubmit="addDocument(event)">
+                            <label for="jsonInput">Pokemon JSON:</label>
+                            <textarea id="jsonInput" name="jsonInput" rows="10" required></textarea>
+                            <button type="submit" class="green-button">Add Pokemon</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Delete Pokemon -->
+                <div class="subsection delete-subsection" style="display: none;">
+                    <h3>Delete a Pokemon</h3>
+                    <div class="subsection-content">
+                        <form id="deleteForm" onsubmit="deleteDocument(event)">
+                            <label for="deleteId">Document ID:</label>
+                            <input type="text" id="deleteId" name="deleteId" required>
+                            <button type="submit" class="red-button">Delete Pokemon</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Update Pokemon -->
+                <div class="subsection update-subsection" style="display: none;">
+                    <h3>Update a Pokemon</h3>
+                    <div class="subsection-content">
+                        <form id="updateForm" onsubmit="updateDocument(event)">
+                            <label for="updateId">Document ID:</label>
+                            <input type="text" id="updateId" name="updateId" required>
+                            <label for="updateJsonInput">Update JSON:</label>
+                            <textarea id="updateJsonInput" name="updateJsonInput" rows="10" required></textarea>
+                            <button type="submit" class="blue-button">Update Pokemon</button>
+                        </form>
+                    </div>
+                </div>
+                </div>
+
+
+            <!-- Show Single Pokemon by ID -->
+            <div class="subsection get-subsection" style="display: none;">
+                <h3>Show Pokemon by ID</h3>
+                <div class="subsection-content">
+                    <form id="getForm" onsubmit="getDocument(event)">
+                        <label for="getId">Document ID:</label>
+                        <input type="text" id="getId" name="getId" required>
+                        <button type="submit" class="green-button">Get Pokemon</button>
+                    </form>
+                    <div id="documentDisplay" style="margin-top: 20px; padding: 10px; border: 1px solid #d3d3d3; border-radius: 4px; display: none;">
+                        <img id="pokemonImage" src="" alt="Pokemon Image" style="display: none; max-width: 100%; height: auto; margin-top: 10px;"/>
+                        <pre id="documentResult"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+        <br>
+        <br>
+        <div style="text-align: center; margin-top: 20px; color: black;">
+            <p>For more correctly formatted Pokemon data, visit this page: <a href="https://github.com/Purukitto/pokemon-data.json/blob/master/pokedex.json" target="_blank">Pokemon Data GitHub</a>. Select and add one Pokemon at a time.</p>
+        </div>
+    </div>
+
+    <script>
+        function toggleSection(element) {
+            const content = element.nextElementSibling;
+            content.style.display = content.style.display === 'none' || !content.style.display ? 'block' : 'none';
+        }
+
+        function handleActionSelect() {
+            const action = document.getElementById('actionSelect').value;
+
+            // Hide all subsections initially
+            const subsections = document.querySelectorAll('.subsection');
+            subsections.forEach(subsection => {
+                subsection.style.display = 'none';
+            });
+
+            // Display the relevant subsection based on the selected action
+            const subsection = document.querySelector(`.${action}-subsection`);
+            if (subsection) {
+                subsection.style.display = 'block';
+            }
+        }
+
+        async function addDocument(event) {
+            event.preventDefault();
+            const form = event.target;
+            const jsonInput = form.jsonInput.value;
+
+            try {
+                const data = JSON.parse(jsonInput);
+                const response = await fetch('/add_document/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add document');
+                }
+
+                alert('Document added successfully!');
+                form.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add document. ' + error.message);
+            }
+        }
+
+        async function deleteDocument(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const deleteId = formData.get('deleteId');
+
+            try {
+                const response = await fetch(`/document/${deleteId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete document');
+                }
+
+                alert('Document deleted successfully!');
+                form.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to delete document');
+            }
+        }
+
+        async function updateDocument(event) {
+            event.preventDefault();
+            const form = event.target;
+            const updateId = form.updateId.value;
+            const updateJsonInput = form.updateJsonInput.value;
+
+            try {
+                const updateData = JSON.parse(updateJsonInput);
+                const response = await fetch(`/document/${updateId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update document');
+                }
+
+                alert('Document updated successfully!');
+                form.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to update document. ' + error.message);
+            }
+        }
+
+        async function getDocument(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const getId = formData.get('getId');
+
+            try {
+                const response = await fetch(`/document/${getId}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to retrieve document. Status: ${response.status}`);
+                }
+
+                const documentData = await response.json();
+                console.log('Document retrieved:', documentData);  // Log the document for debugging
+                
+                const documentResult = document.getElementById('documentResult');
+                const documentDisplay = document.getElementById('documentDisplay');
+                const pokemonImage = document.getElementById('pokemonImage');
+
+                // Display the JSON content
+                documentResult.textContent = JSON.stringify(documentData, null, 2);
+
+                // Display the image if it exists
+                if (documentData.image && documentData.image.thumbnail) {
+                    pokemonImage.src = documentData.image.thumbnail;
+                    pokemonImage.style.display = 'block';
+                } else {
+                    pokemonImage.style.display = 'none';
+                }
+
+                // Show the display container
+                documentDisplay.style.display = 'block';
+                form.reset();
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Failed to retrieve document: ${error.message}`);
+            }
+        }
+
+        async function getAllDocuments() {
+            try {
+                const response = await fetch('/documents');
+
+                if (!response.ok) {
+                    throw new Error('Failed to retrieve documents');
+                }
+
+                const documents = await response.json();
+                const documentList = document.getElementById('documentList');
+                documentList.innerHTML = '';
+
+                documents.forEach(doc => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `ID: ${doc.id}, Name: ${doc.name}`;
+                    documentList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to retrieve documents');
+            }
+        }
+
+        async function performSemanticSearch() {
+            const query = document.getElementById('semanticQuery').value.trim();
+
+            if (!query) {
+                alert('Please enter a search query.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/semantic_search?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to perform semantic search');
+                }
+
+                const result = await response.json();
+                const resultList = document.getElementById('semanticResults');
+                resultList.innerHTML = '';  // Clear previous results
+
+                result.forEach(doc => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `ID: ${doc.id}, Name: ${doc.name}`;
+                    resultList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to perform semantic search.');
+            }
+        }
+    
+        // Add this function to close all subsections when the page loads
+        function closeAllSubsections() {
+            const subsections = document.querySelectorAll('.subsection');
+            subsections.forEach(subsection => {
+                subsection.style.display = 'none';
+            });
+        }
+
+        // Call the closeAllSubsections function when the page loads
+        window.addEventListener('load', closeAllSubsections);
+
+        async function askTheProfessorStream() {
+        const query = document.getElementById('askQuery').value.trim();
+
+        if (!query) {
+            alert('Please enter a question.');
+            return;
+        }
+
+        const loadingGif = document.getElementById('loadingGif');
+        const loadingAnimation = document.getElementById('loadingAnimation');
+        const resultList = document.getElementById('askResults');
+
+        // Clear previous results
+        resultList.innerHTML = '';
+
+        // Show the loading GIF initially
+        loadingGif.style.display = 'block';
+        loadingAnimation.style.display = 'none'; // Ensure the rotating slash is hidden initially
+
+        const eventSource = new EventSource(`/assistant/ask/stream?question=${encodeURIComponent(query)}`);
+
+        eventSource.onmessage = function(event) {
+            const chunk = event.data;
+
+            // Update the result list with the latest chunk, clearing previous content
+            resultList.textContent = chunk;
+
+            // Ensure the rotating slash is shown at the end of the current text
+            if (!loadingAnimation.isConnected) {
+                resultList.appendChild(loadingAnimation);
+            }
+            loadingAnimation.style.display = 'inline-block';
+
+            // Scroll to the bottom to show the latest chunk
+            resultList.scrollTop = resultList.scrollHeight;
+
+            // Hide the loading GIF when the first chunk of text is received
+            loadingGif.style.display = 'none';
+        };
+
+        eventSource.onopen = function() {
+            console.log('Connection to server opened.');
+        };
+
+        const stopLoading = function() {
+            console.log('Stream stopped.');
+
+            // Stop the loading animation and rotating slash
+            loadingGif.style.display = 'none';
+            loadingAnimation.style.display = 'none';
+
+            // Close the EventSource connection
+            eventSource.close();
+        };
+
+        eventSource.onerror = stopLoading;
+        eventSource.onend = stopLoading;
+    }
+    </script>
+</body>
+</html>

@@ -5,6 +5,9 @@ from app.services.llm import DefaultAssistant
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, HTMLResponse
 from sse_starlette.sse import EventSourceResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter()
@@ -25,6 +28,7 @@ async def index():
 @router.post("/add_document/")
 async def add_document(document: dict = Body(...)):
     try:
+        logger.info("Adding document: %s", document)
         # Combine fields for embedding generation
         text = f"{document.get('description', '')} {document.get('name', '')} {document.get('species', '')} {document.get('type', '')}"
         embedding = embeddings_model.encode([text])[0].tolist()
@@ -34,7 +38,7 @@ async def add_document(document: dict = Body(...)):
 
         # Index document into Elasticsearch
         res = es_client.index(index="pokemon", body=document)
-
+        logger.info("Document added successfully: %s", res)
         return {"message": "Document added successfully", "elasticsearch_response": res}
 
     except Exception as e:
@@ -136,13 +140,18 @@ async def get_all_documents():
         )
 
 
-@router.get("/semantic_search")
-async def semantic_search(query: str = Query(...)):
+@router.get("/similarity_search")
+async def similarity_search(query: str = Query(...)):
     try:
-        # Generate the query embedding
-        query_embedding = embeddings_model.encode([query])[0].tolist()
+        logger.info(f"Performing similarity search with query: {query}")
 
-        # Perform the similarity search in Elasticsearch
+        # Generate the query embedding
+        logger.info(f"Embedding model: {embeddings_model}")
+        query_embedding = embeddings_model.encode([query])[0].tolist()
+        #logger.info(f"Query embedding generated: {query_embedding}")
+        logger.info(f"Query embedding generated length: {len(query_embedding)}")
+
+        # Define the script query for similarity search
         script_query = {
             "script_score": {
                 "query": {"match_all": {}},
@@ -152,26 +161,38 @@ async def semantic_search(query: str = Query(...)):
                 },
             }
         }
+        logger.info(f"Script query generated: {script_query}")
 
-        response = es_client.search(
-            index="pokemon", body={"size": 5, "query": script_query}
-        )
+        try:
+            # Perform the similarity search
+            response = es_client.search(
+                index="pokemon", body={"size": 5, "query": script_query}
+            )
+        except Exception as es_error:
+            logger.error(f"Elasticsearch search failed: {es_error}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to perform similarity search due to Elasticsearch error",
+            )
 
-        # Extract the descriptions and scores from the response
+        # Extract documents and scores from the response
         documents = [
             {
                 "id": hit["_id"],
-                "description": hit["_source"]["description"],
+                "description": hit["_source"].get(
+                    "description", "No description available"
+                ),
                 "score": hit["_score"],
             }
-            for hit in response["hits"]["hits"]
+            for hit in response.get("hits", {}).get("hits", [])
         ]
 
         return JSONResponse(content=documents)
 
     except Exception as e:
+        logger.error(f"Similarity search failed: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to perform semantic search: {str(e)}"
+            status_code=500, detail=f"Failed to perform similarty search: {str(e)}"
         )
 
 
@@ -179,6 +200,7 @@ async def semantic_search(query: str = Query(...)):
 async def ask_stream(question: str = Query(...)):
     try:
         # Process the text using LLMAssistant
+        logger.info(f"LLM Model to be used: {DefaultAssistant.model.name}")
         return EventSourceResponse(DefaultAssistant.process(question))
 
     except Exception as e:

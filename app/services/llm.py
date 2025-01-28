@@ -1,6 +1,6 @@
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama import OllamaLLM
 from app.config import (
-    LLM_MODEL_NAME,
+    LLM_MODEL_VERSION,
     MAX_LLM_INPUT_LENGTH,
     MAX_LLM_INPUT_SENTENCES,
     LLAMA_BASE_URL,
@@ -12,11 +12,11 @@ from app.enums import Personas
 
 class LLMAssistant:
     def __init__(
-        self, persona: Personas = Personas.PROFESSOR, model_name: str = LLM_MODEL_NAME
+        self, persona: Personas = Personas.PROFESSOR, model_version: str = LLM_MODEL_VERSION
     ):
         self.persona = persona
         self.persona_prompt = PersonaPromptMapper.get_persona_prompt(persona)
-        self.model = Ollama(name=model_name, base_url=LLAMA_BASE_URL)
+        self.model = OllamaLLM(model=model_version,base_url=LLAMA_BASE_URL)
         self.previous_accumulated_text = ""  # Track previous accumulated text
 
     def process(self, question: str):

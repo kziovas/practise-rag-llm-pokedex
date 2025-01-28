@@ -4,10 +4,13 @@ import os
 import time
 from app.config import ELASTICSEARCH_URI, MAPPINGS_PATH
 from sentence_transformers import SentenceTransformer
+import logging
 
 # Initialize Elasticsearch client
 es_client = Elasticsearch(ELASTICSEARCH_URI)
 embeddings_model = None
+
+logger = logging.getLogger(__name__)
 
 
 def load_mappings():
@@ -16,7 +19,7 @@ def load_mappings():
             mappings = json.load(f)
         return mappings
     except Exception as e:
-        print(f"Failed to load mappings file: {str(e)}")
+        logger.error(f"Failed to load mappings file: {str(e)}")
         exit(1)
 
 
@@ -40,7 +43,7 @@ def seed_database_with_sample_data():
                         document = json.load(file)
                         # Combine fields for embedding generation
                         text = f"{document.get('description', '')} {document.get('name', '')} {document.get('species', '')} {document.get('type', '')}"
-                        embedding = model.encode([text])[0].tolist()
+                        embedding = embeddings_model.encode([text])[0].tolist()
 
                         # Add embedding to the document
                         document["embedding"] = embedding
@@ -49,10 +52,10 @@ def seed_database_with_sample_data():
                         es_client.index(index="pokemon", body=document)
 
                     except Exception as e:
-                        print(f"Failed to index document {filename}: {str(e)}")
+                        logger.error(f"Failed to index document {filename}: {str(e)}")
 
     except Exception as e:
-        print(f"Failed to seed ElasticSearch with sample documents: {str(e)}")
+        logger.error(f"Failed to seed ElasticSearch with sample documents: {str(e)}")
 
 
 def init_es_index():
@@ -65,21 +68,42 @@ def init_es_index():
             return  # Exit if initialization is successful
         except Exception as e:
             retries -= 1
-            print(
+            logger.error(
                 f"Failed to initialize Elasticsearch index. Retries left: {retries}. Error: {str(e)}"
             )
             time.sleep(5)  # Wait before retrying
-    print("Failed to initialize Elasticsearch after several retries. Exiting.")
+    logger.error("Failed to initialize Elasticsearch after several retries. Exiting.")
     exit(1)  # Exit the application if unable to initialize
 
 
 def init_embeddings_model():
+    logger.info("Initializing embeddings_model")
     global embeddings_model
     if embeddings_model is None:
         embeddings_model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+        logger.info("Embeddings_model initialized!")
+
+def get_embeddings_model():
+    global embeddings_model
+    if embeddings_model is None:
+        init_embeddings_model()
+    return embeddings_model
+
+def setup_logging():
+    # Retrieve the logging level from the environment variable
+    log_level_str = os.getenv("LOG_LEVEL", "DEBUG").upper()
+
+    # Map string log level to logging level constants
+    log_level = getattr(logging, log_level_str, logging.DEBUG)
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
 
 def init_core_services():
+    setup_logging()
+    init_embeddings_model()
     init_es_index()
     seed_database_with_sample_data()
-    init_embeddings_model()

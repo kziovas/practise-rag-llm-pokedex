@@ -436,7 +436,7 @@
             }
 
             try {
-                const response = await fetch(`/semantic_search?query=${encodeURIComponent(query)}`);
+                const response = await fetch(`/similarity_search?query=${encodeURIComponent(query)}`);
                 if (!response.ok) {
                     throw new Error('Failed to perform semantic search');
                 }

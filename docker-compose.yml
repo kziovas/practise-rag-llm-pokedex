@@ -23,14 +23,13 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-      ollama:
-        condition: service_started
+      - elasticsearch
+      - ollama
     environment:
-      LLM_MODEL_NAME: ${LLM_MODEL_NAME}
-      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL}
-      OLLAMA_URL: ${OLLAMA_URL}
+      - LLM_MODEL_VERSION=${LLM_MODEL_VERSION}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - OLLAMA_URL=${OLLAMA_URL}
+      - LOG_LEVEL=DEBUG
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/healthcheck || exit 1"]
       interval: 30s
@@ -38,12 +37,16 @@ services:
       retries: 5
 
   ollama:
-    image: ollama/ollama:latest  
+    image: ollama/ollama:0.5.7 
     container_name: ollama
     volumes:
-      - ollama:/root/.ollama
+      - ollama:/root/.ollama  
+      - ./ollama_entrypoint.sh:/ollama_entrypoint.sh 
     ports:
       - "11434:11434"
+    environment:
+      - LLM_MODEL_VERSION=${LLM_MODEL_VERSION} 
+    entrypoint: ["/bin/bash", "/ollama_entrypoint.sh"] 
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:11434 || exit 1"]
       interval: 30s
